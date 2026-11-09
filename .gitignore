@@ -53,3 +53,11 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# CMake / CLion
+build/
+cmake-build-*/
+.idea/
+
+# Firmware binaries
+*.bin
