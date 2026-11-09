@@ -18,6 +18,7 @@ add_executable(firmware
     startup/startup_stm32g071xx.s
     startup/system_stm32g0xx.c
     src/main.c
+    drivers/uart.c
 )
 
 target_include_directories(firmware PRIVATE
@@ -48,6 +49,7 @@ target_link_options(firmware PRIVATE
     -Wl,--gc-sections
     -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/firmware.map
     -Wl,--print-memory-usage
+    -Wl,--no-warn-rwx-segments
 )
 set_target_properties(firmware PROPERTIES
     SUFFIX ".elf"

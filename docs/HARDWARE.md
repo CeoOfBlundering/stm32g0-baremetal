@@ -5,7 +5,7 @@ Fill in as wiring is decided. If something is not written here, it is not decide
 ## Boards
 | Board | Role | Logic level | Notes |
 |---|---|---|---|
-| Nucleo-G071RB | Main MCU | 3.3 V | ST-LINK virtual COM port on USART2 (PA2 TX / PA3 RX, AF1; UM2324 §6.9) |
+| Nucleo-G071RB | Main MCU | 3.3 V | ST-LINK virtual COM port on USART2 (PA2 TX / PA3 RX, AF1; UM2324 §6.9). PA2/PA3 are NOT on Arduino D1/D0 (those are PC4/PC5, USART1); probe PA2 on the ST morpho header |
 | Arduino Due R3 (SAM3X8E, Cortex-M3, 84 MHz) | Second node: I2C slave, CAN node 2, TMR diversity | **3.3 V** | I/O pins are NOT 5 V tolerant: never feed them 5 V signals. Has 2 on-chip CAN controllers (CAN0/CAN1) → can use the spare TJA1050 boards directly, with RX level-shifted |
 | Raspberry Pi 2 | Host tools / logging prototypes | 3.3 V | |
 
@@ -36,5 +36,5 @@ Fill in as wiring is decided. If something is not written here, it is not decide
 - APB: TODO
 
 ## Bench equipment
-- 8-channel USB logic analyzer
+- 8-channel USB logic analyzer (Saleae-compatible, PulseView/fx2lafw). Plug directly into the PC, not through a USB hub
 - Multimeter
