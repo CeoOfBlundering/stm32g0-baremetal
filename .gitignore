@@ -61,3 +61,6 @@ cmake-build-*/
 
 # Firmware binaries
 *.bin
+
+# Reference manuals and extracts (ST copyright, keep local)
+ref/

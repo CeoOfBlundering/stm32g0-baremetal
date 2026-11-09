@@ -24,6 +24,19 @@ The owner must be able to explain every line in an interview. Follow these rules
   bus behaviour), not just the fix.
 - Never commit on the owner's behalf; the owner reviews and commits.
 
+## Reference docs
+- Local only (`ref/`, git-ignored). Start with `ref/README.md`: it maps each file to its
+  RM0444 / DS12232 / UM2324 pages.
+- For register and bit names, search the CMSIS header `stm32g071xx.h` first.
+- For behaviour and configuration sequences, read only the relevant chapter extract
+  (e.g. `ref/rm0444_ch33_usart.md`). Figures do not survive extraction; if a table looks
+  garbled, ask the owner to check the PDF page.
+- RM0444 covers the whole G0x1 family. Before using a peripheral, confirm the G071 has it
+  (DS12232). The G071 has no FDCAN.
+- Check `ref/es0418_errata.md` for the peripheral in question before blaming the code
+  for strange behaviour. Errata depend on silicon revision (REV_ID in DBGMCU_IDCODE;
+  see `docs/HARDWARE.md`).
+
 ## Coding standard
 - C11. Fixed-width types (`uint32_t` etc.). No dynamic allocation (`malloc`) in firmware.
 - Aim for MISRA C:2012 style: no implicit conversions between signed/unsigned, every
