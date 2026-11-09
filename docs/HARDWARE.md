@@ -28,7 +28,8 @@ Fill in as wiring is decided. If something is not written here, it is not decide
 | SPI SCK/MISO/MOSI/CS | TODO | | SD / MCP2515 | |
 
 ## Silicon revision
-- REV_ID (DBGMCU_IDCODE[31:16]): TODO — read it once over the debugger; ES0418 errata apply per revision.
+- Revision **Y** (REV_ID 0x2001), device ID 0x460, read by STM32CubeProgrammer on 2026-11-09.
+  ES0418 errata listed for rev Y apply to this board.
 
 ## Clock
 - SYSCLK: TODO (HSI16 default = 16 MHz; PLL to 64 MHz if configured)
