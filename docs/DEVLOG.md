@@ -4,6 +4,22 @@ Short entries, newest at the top. What was done, what broke, what is next.
 
 ---
 
+## 2026-11-14
+- USART2 RX, first polling (PA3/AF1, RE) with an echo test, then interrupt-driven:
+  RXNEIE + `NVIC_EnableIRQ(USART2_IRQn)`, `USART2_IRQHandler` pushes into a 64-byte SPSC
+  ring buffer, `uart_read_byte()` is now non-blocking. 920 B flash.
+- Overrun seen live: halting the core while typing sets ORE; only the first byte survives
+  in RDR and, until ORE is cleared via `ICR.ORECF`, the receiver accepts nothing more.
+  Polling version now clears ORE while waiting; the ISR clears it on entry.
+- Gotchas: the CLion SVD view reads RDR when USART2 is expanded, which consumes the byte
+  and clears RXNE (keep USART2 collapsed when testing RX). A debugger halt also stops the
+  ISR, so "pause and type" is not a test of interrupts; a busy loop in `main` is. Inverted
+  `while` on RXNE froze the read on first byte. Ring-buffer "full" must test
+  `(head + 1) & MASK == tail`, not `head != tail` (which drops everything when empty).
+- Verified: echo with a ~1 s busy loop in `main`; text typed during the loop arrives
+  complete afterwards.
+- Next: interrupt-driven TX (TXFNF interrupt + TX ring buffer), then a line editor for the CLI.
+
 ## 2026-11-09
 - Added reference extracts in `ref/` (git-ignored), ES0418 errata.
 - Project skeleton: CMake + presets, toolchain file, linker script, CMSIS headers, startup.

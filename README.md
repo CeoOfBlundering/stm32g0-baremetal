@@ -14,11 +14,21 @@ network, a triple-modular-redundancy (TMR) fault-voting demo and a black-box dat
 | Driver | Mode | Status | Verified on |
 |---|---|---|---|
 | USART2 TX | Polling | Done | ST-LINK virtual COM port + logic analyzer |
-| USART2 RX | Polling / interrupt + ring buffer | Next | |
+| USART2 RX | Interrupt + 64-byte ring buffer | Done | Echo test with a busy `main` loop, overrun recovery |
+| USART2 TX | Interrupt + ring buffer | Next | |
 | I2C (MPU6050 IMU) | | Planned | |
 | SPI (microSD, MCP2515) | | Planned | |
 | CAN via MCP2515 | | Planned | Two-node bus |
 | DMA | | Planned | |
+
+### USART2 RX
+
+Each received byte raises the RXNE interrupt; `USART2_IRQHandler` moves it from RDR into a
+lock-free single-producer/single-consumer ring buffer (64 bytes, ISR owns `head`, reader owns
+`tail`), clears overrun (ORE) so the receiver never locks up, and counts bytes dropped when
+the buffer is full. `uart_read_byte()` is non-blocking, so `main` can keep working while input
+arrives. Verified by echoing text typed while `main` sat in a ~1 s busy loop: everything
+arrived complete once the loop ended.
 
 ### USART2 TX
 

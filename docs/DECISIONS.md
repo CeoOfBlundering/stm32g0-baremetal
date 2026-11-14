@@ -5,6 +5,24 @@ Newest at the top. Keep each entry under ~10 lines.
 
 ---
 
+## D-003 — USART2 RX is interrupt-driven with a lock-free ring buffer
+- **Date:** 2026-11-14
+- **Context:** Polling RX loses bytes whenever `main` is busy for more than one frame
+  (~87 µs at 115200 baud): the second byte overruns RDR and ORE blocks the receiver.
+  The CLI and later the GPS parser need every byte while `main` does other work.
+- **Options considered:** polling; polling with the 8-byte RX FIFO (`FIFOEN`, delays the
+  problem to ~0.7 ms); RXNE interrupt + ring buffer; DMA into a circular buffer.
+- **Decision:** RXNE interrupt + 64-byte single-producer/single-consumer ring buffer.
+  The ISR only writes `head`, the reader only writes `tail`; both are `volatile uint8_t`,
+  so no lock is needed on the single-core M0+. Size is a power of two so wrap is `& 63`
+  (the M0+ has no hardware divide). Full buffer drops the new byte and counts it in
+  `rx_dropped`. ORE is cleared in the ISR to avoid an interrupt storm.
+- **Consequences:** `uart_read_byte()` is non-blocking. ~87 µs × 63 bytes of slack before
+  data loss. DMA can replace the ISR later without changing the API. FIFO stays disabled
+  for now so RXNE/RDR behave one byte at a time.
+
+---
+
 ## D-002 — CMSIS from upstream GitHub, CMake instead of a CubeIDE project
 - **Date:** 2026-11-09
 - **Context:** CubeIDE projects pull in HAL, `.ioc` and Eclipse metadata, which conflict with

@@ -8,6 +8,13 @@
 #define UART_CLK_HZ   16000000U   // HSI16, system default at boot.
 #define UART_BAUD     115200U
 
+#define RX_BUF_SIZE 64U
+#define RX_BUF_MASK (RX_BUF_SIZE - 1U)
+
+static uint8_t rx_buf[RX_BUF_SIZE];
+static volatile uint8_t rx_head;
+static volatile uint8_t rx_tail;
+static volatile uint32_t rx_dropped;   // Bytes lost while buffer is full
 
 void uart_init(void) {
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
@@ -27,7 +34,8 @@ void uart_init(void) {
     GPIOA->AFR[0] |= (1U << GPIO_AFRL_AFSEL3_Pos);
 
     USART2->BRR = (UART_CLK_HZ + UART_BAUD / 2U) / UART_BAUD;   // = 139, RM0444 §33.5.7
-    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE | USART_CR1_RE; // Enable USART, RX, TX
+    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE | USART_CR1_RE | USART_CR1_RXNEIE_RXFNEIE; // Enable USART, RX, TX, Interrupt
+    NVIC_EnableIRQ(USART2_IRQn);
 }
 
 void uart_write_byte(uint8_t byte) {
@@ -43,11 +51,28 @@ void uart_write_string(const char *str) {
     }
 }
 
-uint8_t uart_read_byte(void) {
-    while ((USART2->ISR & USART_ISR_RXNE_RXFNE) == 0U) {
-        if ((USART2->ISR & USART_ISR_ORE) != 0U) {
-            USART2->ICR = USART_ICR_ORECF;   // overrun: data was lost, re-arm the receiver
+bool uart_read_byte(uint8_t *out) {
+    if (rx_head == rx_tail) {
+        return false; // Buffer empty, nothing to read
+    }
+    *out = rx_buf[rx_tail];
+    rx_tail = (uint8_t)((rx_tail + 1U) & RX_BUF_MASK);
+    return true;
+}
+
+void USART2_IRQHandler(void) {
+    if ((USART2->ISR & USART_ISR_ORE) != 0U) {
+        USART2->ICR = USART_ICR_ORECF;
+    }
+    if ((USART2->ISR & USART_ISR_RXNE_RXFNE) != 0U) {
+        uint8_t byte = (uint8_t)USART2->RDR;
+        uint8_t next = (uint8_t)((rx_head + 1U) & RX_BUF_MASK);
+        if (next != rx_tail) {
+            rx_buf[rx_head] = byte;
+            rx_head = next;
+        }
+        else {
+            rx_dropped++;
         }
     }
-    return (uint8_t)USART2->RDR;
 }
