@@ -18,7 +18,15 @@ Short entries, newest at the top. What was done, what broke, what is next.
   `(head + 1) & MASK == tail`, not `head != tail` (which drops everything when empty).
 - Verified: echo with a ~1 s busy loop in `main`; text typed during the loop arrives
   complete afterwards.
-- Next: interrupt-driven TX (TXFNF interrupt + TX ring buffer), then a line editor for the CLI.
+- USART2 TX moved to interrupts: `uart_write_byte()` queues into a 64-byte TX ring buffer
+  and returns; the ISR feeds TDR on TXE and turns TXEIE off when the buffer is empty.
+  First attempt put the TX code inside the RX branch and made the ISR the *producer*
+  (pushing received bytes into the TX buffer); in TX the ISR is the consumer and only
+  touches `tx_tail`.
+- Verified: a 92-character string (longer than the 63-byte capacity) arrives complete and in
+  order, so the buffer wraps and the full-buffer wait works; echo still works with both
+  directions interrupt-driven.
+- Next: line editor for the CLI (backspace, Enter, command dispatch).
 
 ## 2026-11-09
 - Added reference extracts in `ref/` (git-ignored), ES0418 errata.

@@ -13,9 +13,9 @@ network, a triple-modular-redundancy (TMR) fault-voting demo and a black-box dat
 
 | Driver | Mode | Status | Verified on |
 |---|---|---|---|
-| USART2 TX | Polling | Done | ST-LINK virtual COM port + logic analyzer |
+| USART2 TX | Interrupt + 64-byte ring buffer | Done | Logic analyzer (polling version), 92-char string through a 63-byte buffer |
 | USART2 RX | Interrupt + 64-byte ring buffer | Done | Echo test with a busy `main` loop, overrun recovery |
-| USART2 TX | Interrupt + ring buffer | Next | |
+| CLI line editor | On top of USART2 | Next | |
 | I2C (MPU6050 IMU) | | Planned | |
 | SPI (microSD, MCP2515) | | Planned | |
 | CAN via MCP2515 | | Planned | Two-node bus |
@@ -32,7 +32,12 @@ arrived complete once the loop ended.
 
 ### USART2 TX
 
-115200 baud, 8N1, from the 16 MHz HSI16 clock (BRR = 139, -0.08 % baud error).
+`uart_write_byte()` queues into a 64-byte ring buffer and returns immediately; the same ISR
+feeds TDR whenever it empties and switches the TXE interrupt off once the buffer is drained
+(TXE stays high while idle, so leaving it on would fire forever). If more than 63 bytes are
+queued at once, the writer waits for space instead of dropping output.
+
+The first, polling version was verified on the wire: 115200 baud, 8N1, from the 16 MHz HSI16 clock (BRR = 139, -0.08 % baud error).
 "hello\r\n" decoded on the TX line (PA2) with a logic analyzer in PulseView:
 `68 65 6C 6C 6F 0D 0A`, LSB first, ~86 µs per byte, no idle gap between bytes.
 

@@ -16,6 +16,13 @@ static volatile uint8_t rx_head;
 static volatile uint8_t rx_tail;
 static volatile uint32_t rx_dropped;   // Bytes lost while buffer is full
 
+#define TX_BUF_SIZE 64U
+#define TX_BUF_MASK (TX_BUF_SIZE - 1U)
+
+static uint8_t tx_buf[TX_BUF_SIZE];
+static volatile uint8_t tx_head;
+static volatile uint8_t tx_tail;
+
 void uart_init(void) {
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
 
@@ -39,9 +46,11 @@ void uart_init(void) {
 }
 
 void uart_write_byte(uint8_t byte) {
-    while ((USART2->ISR & USART_ISR_TXE_TXFNF) == 0U) {
-    }
-    USART2->TDR = byte;
+    uint8_t next = (uint8_t)((tx_head + 1U) & TX_BUF_MASK);
+    while (next == tx_tail){}
+    tx_buf[tx_head] = byte;
+    tx_head = next;
+    ATOMIC_SET_BIT(USART2->CR1, USART_CR1_TXEIE_TXFNFIE);
 }
 
 void uart_write_string(const char *str) {
@@ -73,6 +82,15 @@ void USART2_IRQHandler(void) {
         }
         else {
             rx_dropped++;
+        }
+    }
+    if (((USART2->CR1 & USART_CR1_TXEIE_TXFNFIE) != 0U) &&
+    ((USART2->ISR & USART_ISR_TXE_TXFNF) != 0U)) {
+        if (tx_head != tx_tail) {
+            USART2->TDR = tx_buf[tx_tail];
+            tx_tail = (uint8_t)((tx_tail + 1U) & TX_BUF_MASK);
+        } else {
+            USART2->CR1 &= ~USART_CR1_TXEIE_TXFNFIE;
         }
     }
 }

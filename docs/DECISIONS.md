@@ -5,6 +5,25 @@ Newest at the top. Keep each entry under ~10 lines.
 
 ---
 
+## D-004 — USART2 TX is interrupt-driven; writers block only when the buffer is full
+- **Date:** 2026-11-14
+- **Context:** Polling TX blocks `main` ~87 µs per byte (~9 ms for a 100-character CLI help
+  text).
+- **Decision:** 64-byte TX ring buffer. `main` is the producer (`tx_head`), the ISR the
+  consumer (`tx_tail`). TXEIE is enabled only while there is data: TXE stays set whenever the
+  transmitter is idle, so an always-on TXE interrupt would fire continuously. The writer sets
+  TXEIE after queueing; the ISR clears it when the buffer is empty.
+  Unlike RX, a full TX buffer makes `uart_write_byte()` wait instead of dropping, because
+  we produce the data and losing half a message is worse than a short wait.
+- **Race note:** CR1 is now written from both `main` and the ISR. `main` uses
+  `ATOMIC_SET_BIT` (briefly masks interrupts on the M0+, which has no LDREX/STREX) so its
+  read-modify-write cannot overwrite a change the ISR made in between. The ISR uses plain
+  `&=`, since `main` cannot preempt it.
+- **Consequences:** printing no longer stalls `main` unless more than 63 bytes are queued at
+  once. Output order is preserved. DMA could replace the ISR later behind the same API.
+
+---
+
 ## D-003 — USART2 RX is interrupt-driven with a lock-free ring buffer
 - **Date:** 2026-11-14
 - **Context:** Polling RX loses bytes whenever `main` is busy for more than one frame
