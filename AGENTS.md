@@ -22,7 +22,7 @@ The owner must be able to explain every line in an interview. Follow these rules
   why, and the RM0444 section. Keep that explanation out of the code (see Comments).
 - If the owner asks "why" about any line, answer with the mechanism (registers, timing,
   bus behaviour), not just the fix.
-- Never commit on the owner's behalf; the owner reviews and commits.
+- Commit only when the owner explicitly asks; otherwise leave changes for the owner to review.
 
 ## Reference docs
 - Local only (`ref/`, git-ignored). Start with `ref/README.md`: it maps each file to its
@@ -64,6 +64,18 @@ The owner must be able to explain every line in an interview. Follow these rules
 - At the end of a work session, add a few lines to `docs/DEVLOG.md`: what was done,
   what broke, what is next. Keep entries short.
 - Do not create new .md files without asking.
+
+## Review agents
+Three read-only review subagents exist, with identical prompts for both tools:
+`.claude/agents/` (Claude Code) and `.opencode/agents/` (OpenCode). If you change one,
+change its twin.
+- `misra-reviewer`: coding standard and MISRA-style rules on changed code.
+- `register-checker`: register accesses against the CMSIS header, `ref/` and `docs/HARDWARE.md`.
+- `errata-checker`: ES0418 errata for silicon revision Y on the peripherals in use.
+
+After writing a driver or any change that touches peripheral registers, run all three in
+parallel on the changed files before calling the task done, fix what they find, and report
+anything you chose not to fix and why. Skip this for documentation-only changes.
 
 ## Verification
 - Code must build with `-Wall -Wextra -Werror` before you call a task done.
