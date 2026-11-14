@@ -20,8 +20,14 @@ void uart_init(void) {
     GPIOA->AFR[0] &= ~(GPIO_AFRL_AFSEL2_Msk);
     GPIOA->AFR[0] |= (1U << GPIO_AFRL_AFSEL2_Pos);
 
+    GPIOA->MODER &= ~GPIO_MODER_MODE3_Msk;
+    GPIOA->MODER |= (GPIO_MODE_AF << GPIO_MODER_MODE3_Pos);
+
+    GPIOA->AFR[0] &= ~(GPIO_AFRL_AFSEL3_Msk);
+    GPIOA->AFR[0] |= (1U << GPIO_AFRL_AFSEL3_Pos);
+
     USART2->BRR = (UART_CLK_HZ + UART_BAUD / 2U) / UART_BAUD;   // = 139, RM0444 §33.5.7
-    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE;
+    USART2->CR1 |= USART_CR1_TE | USART_CR1_UE | USART_CR1_RE; // Enable USART, RX, TX
 }
 
 void uart_write_byte(uint8_t byte) {
@@ -35,4 +41,13 @@ void uart_write_string(const char *str) {
         uart_write_byte((uint8_t)*str);
         str++;
     }
+}
+
+uint8_t uart_read_byte(void) {
+    while ((USART2->ISR & USART_ISR_RXNE_RXFNE) == 0U) {
+        if ((USART2->ISR & USART_ISR_ORE) != 0U) {
+            USART2->ICR = USART_ICR_ORECF;   // overrun: data was lost, re-arm the receiver
+        }
+    }
+    return (uint8_t)USART2->RDR;
 }

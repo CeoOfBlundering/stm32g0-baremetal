@@ -4,9 +4,10 @@
 int main(void)
 {
     uart_init();
+    uart_write_string("echo ready\r\n");
     for (;;) {
-        uart_write_string("hello\r\n");
-        for (volatile uint32_t i = 0; i < 200000U; i++) { }
+        uint8_t c = uart_read_byte();
+        uart_write_byte(c);
     }
 }
 
