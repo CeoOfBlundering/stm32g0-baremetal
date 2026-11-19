@@ -49,6 +49,7 @@ void uart_write_byte(uint8_t byte) {
     uint8_t next = (uint8_t)((tx_head + 1U) & TX_BUF_MASK);
     while (next == tx_tail){}
     tx_buf[tx_head] = byte;
+    __COMPILER_BARRIER();
     tx_head = next;
     ATOMIC_SET_BIT(USART2->CR1, USART_CR1_TXEIE_TXFNFIE);
 }
@@ -65,6 +66,7 @@ bool uart_read_byte(uint8_t *out) {
         return false; // Buffer empty, nothing to read
     }
     *out = rx_buf[rx_tail];
+    __COMPILER_BARRIER();
     rx_tail = (uint8_t)((rx_tail + 1U) & RX_BUF_MASK);
     return true;
 }

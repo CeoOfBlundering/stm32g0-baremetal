@@ -4,6 +4,23 @@ Short entries, newest at the top. What was done, what broke, what is next.
 
 ---
 
+## 2026-11-19
+- Ring buffers: added `__COMPILER_BARRIER()` (CMSIS, `cmsis_gcc.h`) between the data access
+  and the index update on the main-context side: `uart_write_byte()` (write `tx_buf`, then
+  publish `tx_head`) and `uart_read_byte()` (read `rx_buf`, then advance `rx_tail`).
+  `volatile` only orders the volatile accesses; the plain `rx_buf`/`tx_buf` accesses may be
+  moved across them, letting the ISR see a slot before it is written or after it is freed.
+- No barrier on the ISR side: `main` cannot preempt `USART2_IRQHandler`, so it never sees the
+  ISR's two steps half-done (an RX-side barrier was tried and removed). On TX, `tx_buf` must
+  be read before the volatile `TDR` store anyway. Revisit if another ISR ever touches the
+  buffers (calling the UART API from an ISR also breaks SPSC and can deadlock on a full TX
+  buffer).
+- Verified: echo, and the 92-character string arrives complete and in order. "echo ready"
+  twice after flashing is the debugger reset (one line per RESET button press).
+- Next: line editor for the CLI.
+
+---
+
 ## 2026-11-14
 - USART2 RX, first polling (PA3/AF1, RE) with an echo test, then interrupt-driven:
   RXNEIE + `NVIC_EnableIRQ(USART2_IRQn)`, `USART2_IRQHandler` pushes into a 64-byte SPSC
