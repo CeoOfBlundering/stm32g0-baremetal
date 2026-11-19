@@ -17,7 +17,23 @@ Short entries, newest at the top. What was done, what broke, what is next.
   buffer).
 - Verified: echo, and the 92-character string arrives complete and in order. "echo ready"
   twice after flashing is the debugger reset (one line per RESET button press).
-- Next: line editor for the CLI.
+- CLI step 1, line editor (`src/cli.c`, `src/cli.h`): `le_feed()` takes one byte and
+  returns true when a line is ready in `le->line`. It does not know about the UART: echo
+  goes through an `le_out_fn` callback, so the editor can be built and tested on the PC.
+  `main` wires it with a small `echo_uart(char)` wrapper (`uart_write_byte` takes
+  `uint8_t`). Handles printable 0x20..0x7E, Backspace (BS 0x08 and DEL 0x7F, `"\b \b"`,
+  stops at an empty line), and Enter as CR, LF or CRLF: a `last_was_cr` flag swallows the
+  LF of a CRLF pair, so CRLF terminals do not get an extra empty line. Lines are capped at
+  `LE_LINE_MAX` = 80; extra input is ignored.
+- Bugs on the way: `'n'` instead of `'\n'` (twice); returning true for every printable
+  char; `last_was_cr` set on LF too and never cleared, so on an LF-only terminal every
+  Enter after the first was swallowed. Fixed by updating the flag once at the end:
+  `last_was_cr = (c == '\r')`.
+- Verified on the board: `help`, empty line, a 92-character paste cut to exactly 80 chars
+  (no overflow), Backspace, Enter (CR), Ctrl+J (LF), repeated LF. On the PC, `cli.c` builds
+  with the project warning flags under x86 gcc (signed `char`), and CR/LF/CRLF cases pass.
+- Next: swallow ESC sequences (arrow keys currently insert `[A`), Ctrl+C to cancel a line,
+  BEL when the line is full, then the tokenizer.
 
 ---
 

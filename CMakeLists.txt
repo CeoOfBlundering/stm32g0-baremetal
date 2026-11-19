@@ -19,6 +19,8 @@ add_executable(firmware
     startup/system_stm32g0xx.c
     src/main.c
     drivers/uart.c
+        src/cli.c
+        src/cli.h
 )
 
 target_include_directories(firmware PRIVATE
