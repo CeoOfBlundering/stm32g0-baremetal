@@ -28,5 +28,10 @@ struct line_editor {
 
 void le_init(struct line_editor *le, le_out_fn out);
 bool le_feed(struct line_editor *le, char c);   // true when a full line is ready in le->line
+#define CLI_MAX_ARGS 8U   // max tokens per command line, command name included
 
+// Splits line in place: separators become '\0', argv[i] points to each token.
+// Returns argc. If there are more than max_args tokens, the last argv entry holds the
+// rest of the line as typed and *truncated is set. argv[argc] = NULL when argc < max_args.
+size_t cli_tokenize(char *line, char *argv[], size_t max_args, bool *truncated);
 #endif //STM32_BAREMETAL_CLI_H

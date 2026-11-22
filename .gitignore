@@ -64,3 +64,6 @@ cmake-build-*/
 
 # Reference manuals and extracts (ST copyright, keep local)
 ref/
+
+# Test file (gcc)
+/test_cli

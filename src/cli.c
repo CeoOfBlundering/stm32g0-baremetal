@@ -4,6 +4,8 @@
 
 #include "cli.h"
 
+#include <math.h>
+
 #define CH_ETX          0x03   // Ctrl+C (End of Text)
 #define CH_BEL          0x07   // Bell
 #define CH_BS           0x08   // Backspace
@@ -145,4 +147,38 @@ bool le_feed(struct line_editor *le, char c)
 
     le->skip_next_lf = (c == '\r');
     return ready;
+}
+
+size_t cli_tokenize(char *line, char *argv[], size_t max_args, bool *truncated)
+{
+    size_t argc = 0U;
+    *truncated = false;
+    bool save_next = true;
+
+    for (size_t i = 0U; line[i] != '\0'; i++) {
+        if ((line[i] != ' ') && save_next) {
+            if (argc < max_args) {
+                argv[argc] = &line[i];
+                argc++;
+                save_next = false;
+            }
+            else {
+                *truncated = true;
+            }
+        }
+        else if (line[i] == ' ') {
+            save_next = true;
+            if (argc != max_args) {
+                line[i] = '\0';
+            }
+        }
+        else {
+            // Inside a word but already saved first character, nothing to do.
+        }
+    }
+
+    if (argc < max_args) {
+        argv[argc] = NULL;
+    }
+    return argc;
 }
