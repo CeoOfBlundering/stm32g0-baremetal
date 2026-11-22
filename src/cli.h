@@ -34,4 +34,22 @@ bool le_feed(struct line_editor *le, char c);   // true when a full line is read
 // Returns argc. If there are more than max_args tokens, the last argv entry holds the
 // rest of the line as typed and *truncated is set. argv[argc] = NULL when argc < max_args.
 size_t cli_tokenize(char *line, char *argv[], size_t max_args, bool *truncated);
+/* ---------------- commands ---------------- */
+
+typedef void (*cli_cmd_fn)(size_t argc, char *argv[]);
+
+struct cli_command {
+    const char *name;   // argv[0] that selects this command, e.g. "uart"
+    cli_cmd_fn  fn;     // called with the full argc/argv (argv[0] is the name)
+    const char *help;   // one line for the help command
+};
+
+void cli_init(le_out_fn out);     // where cli_print output goes
+void cli_print(const char *s);
+
+// Finds argv[0] in table[0..n-1] and calls its fn. Prints an error for an unknown
+// command or a truncated line; prints nothing for an empty line (argc == 0).
+void cli_dispatch(const struct cli_command *table, size_t n,
+                  size_t argc, char *argv[], bool truncated);
+
 #endif //STM32_BAREMETAL_CLI_H

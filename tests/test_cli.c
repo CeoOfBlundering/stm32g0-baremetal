@@ -16,8 +16,7 @@ static void out_ignore(char c) { (void)c; }
 static int  lines_ready;
 static char last_line[LE_LINE_MAX + 1U];
 
-static void feed_str(struct line_editor *le, const char *s)
-{
+static void feed_str(struct line_editor *le, const char *s) {
     for (; *s != '\0'; s++) {
         if (le_feed(le, *s)) {
             lines_ready++;
@@ -32,8 +31,7 @@ static int bel_count;
 static void out_count_bel(char c) { if (c == '\a') { bel_count++; } }
 
 // Feed `n` copies of `c`, then the string `tail`. Returns number of BELs sent.
-static int bels_for(char c, int n, const char *tail, char *line_out)
-{
+static int bels_for(char c, int n, const char *tail, char *line_out) {
     struct line_editor le;
     le_init(&le, out_count_bel);
     bel_count = 0;
@@ -45,8 +43,7 @@ static int bels_for(char c, int n, const char *tail, char *line_out)
     return bel_count;
 }
 
-static void check_bel(const char *name, int n, const char *tail, int want_bels, size_t want_len)
-{
+static void check_bel(const char *name, int n, const char *tail, int want_bels, size_t want_len) {
     char line[LE_LINE_MAX + 1U];
     int bels = bels_for('a', n, tail, line);
     bool ok = (bels == want_bels) && (strlen(line) == want_len);
@@ -54,8 +51,7 @@ static void check_bel(const char *name, int n, const char *tail, int want_bels, 
     if (!ok) { failures++; }
 }
 
-static void check(const char *name, const char *input, int want_lines, const char *want_line)
-{
+static void check(const char *name, const char *input, int want_lines, const char *want_line) {
     struct line_editor le;
     le_init(&le, out_ignore);
     lines_ready = 0;
@@ -70,8 +66,7 @@ static void check(const char *name, const char *input, int want_lines, const cha
 
 // want[] lists the expected tokens; want_argc of them are checked.
 static void check_tok(const char *name, const char *input, size_t max_args,
-                      size_t want_argc, const char *const want[], bool want_trunc)
-{
+                      size_t want_argc, const char *const want[], bool want_trunc) {
     char line[LE_LINE_MAX + 1U];
     char *argv[CLI_MAX_ARGS];
     bool truncated = true;   // tokenizer must overwrite this
@@ -99,8 +94,76 @@ static void check_tok(const char *name, const char *input, size_t max_args,
     if (!ok) { failures++; }
 }
 
-int main(void)
-{
+/* ---------------- dispatcher ---------------- */
+
+static char   out_buf[256];
+static size_t out_len;
+
+static void out_capture(char c) {
+    if (out_len < (sizeof(out_buf) - 1U)) {
+        out_buf[out_len] = c;
+        out_len++;
+        out_buf[out_len] = '\0';
+    }
+}
+
+// Fake command: records how it was called instead of printing.
+static int    foo_calls;
+static size_t foo_argc;
+static char   foo_argv_joined[LE_LINE_MAX + 1U];   // argv joined with '|', e.g. "foo|a|b"
+
+static void fake_foo(size_t argc, char *argv[]) {
+    foo_calls++;
+    foo_argc = argc;
+    foo_argv_joined[0] = '\0';
+    for (size_t i = 0U; i < argc; i++) {
+        if (i > 0U) {
+            strcat(foo_argv_joined, "|");
+        }
+        strcat(foo_argv_joined, argv[i]);
+    }
+}
+
+static const struct cli_command fake_table[] = {
+    { "foo", fake_foo, "test command" },
+};
+
+// input is tokenized with cli_tokenize; truncated is passed in directly.
+static void check_disp(const char *name, const char *input, bool truncated,
+                       int want_calls, const char *want_argv, const char *want_out) {
+    char line[LE_LINE_MAX + 1U];
+    char *argv[CLI_MAX_ARGS];
+    bool tok_trunc;
+
+    strcpy(line, input);
+    size_t argc = cli_tokenize(line, argv, CLI_MAX_ARGS, &tok_trunc);
+
+    cli_init(out_capture);
+    out_len = 0U;
+    out_buf[0] = '\0';
+    foo_calls = 0;
+    foo_argc = 0U;
+    foo_argv_joined[0] = '\0';
+
+    cli_dispatch(fake_table, sizeof(fake_table) / sizeof(fake_table[0]), argc, argv, truncated);
+
+    bool ok = (foo_calls == want_calls) && (strcmp(out_buf, want_out) == 0);
+    if (ok && (want_calls > 0)) {
+        ok = (strcmp(foo_argv_joined, want_argv) == 0);
+    }
+
+    printf("%-28s %s  (calls=%d, argv=\"%s\", out=\"", name, ok ? "PASS" : "FAIL",
+           foo_calls, foo_argv_joined);
+    for (size_t i = 0U; i < out_len; i++) {
+        if (out_buf[i] == '\r') { printf("\\r"); }
+        else if (out_buf[i] == '\n') { printf("\\n"); }
+        else { putchar(out_buf[i]); }
+    }
+    printf("\")\n");
+    if (!ok) { failures++; }
+}
+
+int main(void) {
     // Basic input, Enter, Backspace
     check("plain CR",             "help\r",            1, "help");
     check("CRLF",                 "help\r\n",          1, "help");
@@ -138,6 +201,13 @@ int main(void)
     check_tok("tok: extra spaces",      "  uart   stats  ",   4U, 2U, (const char *const[]){"uart", "stats"}, false);
     check_tok("tok: overflow keeps rest","a b c d",           2U, 2U, (const char *const[]){"a", "b c d"}, true);
     check_tok("tok: exactly max_args",  "a b",                2U, 2U, (const char *const[]){"a", "b"}, false);
+
+    // Dispatcher (FAIL until cli_dispatch is implemented)
+    check_disp("disp: known command",   "foo",      false, 1, "foo",     "");
+    check_disp("disp: with arguments",  "foo a b",  false, 1, "foo|a|b", "");
+    check_disp("disp: unknown command", "bar",      false, 0, "",        "unknown command: bar\r\n");
+    check_disp("disp: empty line",      "",         false, 0, "",        "");
+    check_disp("disp: truncated",       "foo",      true,  0, "",        "too many arguments\r\n");
 
     printf("\n%s (%d failing)\n", failures == 0 ? "ALL PASS" : "SOME FAIL", failures);
     return (failures == 0) ? 0 : 1;

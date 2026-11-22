@@ -5,8 +5,7 @@
 static struct line_editor le;
 static void echo_uart(char c) {uart_write_byte((uint8_t)c);}
 
-int main(void)
-{
+int main(void) {
     uart_init();
     le_init(&le, echo_uart);
     uart_write_string("> ");

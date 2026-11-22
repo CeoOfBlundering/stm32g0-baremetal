@@ -47,6 +47,8 @@ The owner must be able to explain every line in an interview. Follow these rules
   (`USART_CR1_UE`), never magic numbers. If a number is unavoidable, it is a named
   `#define` with its derivation.
 - Naming: `module_verb_noun()` (e.g. `uart_write_byte`), `snake_case`, macros `UPPER_CASE`.
+- Braces: opening brace on the same line as the function, `if`, loop or struct (K&R);
+  `else` starts on the line after the closing brace.
 - No `typedef` for structs and enums: write `struct line_editor`, `enum le_state`. Typedefs
   only for function pointers (e.g. `le_out_fn`), whose raw syntax is hard to read.
 - One exit point per function (MISRA Rule 15.5): use a result variable instead of early
