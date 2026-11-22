@@ -4,6 +4,25 @@ Short entries, newest at the top. What was done, what broke, what is next.
 
 ---
 
+## 2026-11-22
+- Line editor finished (written and unit-tested on the PC on 11-21, ported today):
+  - ANSI escape sequences: a 3-state parser (`LE_ST_NORMAL`, `LE_ST_ESC`, `LE_ST_CSI`)
+    swallows `ESC [ params final`, so arrow keys no longer insert `[A`. A byte that breaks
+    a sequence goes back to NORMAL and is handled as normal input (Enter inside a broken
+    sequence still ends the line). A `consumed` flag keeps a single exit point.
+  - Ctrl+C (ETX, 0x03) prints `^C`, clears the line and returns an empty ready line so
+    `main` prints a new prompt. BEL (0x07) when a printable char arrives on a full line.
+  - Bugs on the way: final-byte range copy-pasted as `CSI_PARAM_MAX` (never true);
+    Ctrl+C first wrote `'\0'` at `line[len]` (copied from Enter), which kept the text.
+- Renames and style: `last_was_cr` -> `skip_next_lf` (says why it exists), `le_t` ->
+  `struct line_editor`, `enum le_state` without typedef. Style rules added to AGENTS.md.
+- `tests/test_cli.c`: 20 host-side tests (Enter CR/LF/CRLF, Backspace, escape sequences,
+  Ctrl+C, BEL at the 80-char limit), written test-first for Ctrl+C and BEL. A fake `out`
+  callback counts BELs. Built with gcc and the project warning flags; all pass.
+- Next: board test (arrow keys, Delete, Ctrl+C, BEL), then the tokenizer.
+
+---
+
 ## 2026-11-19
 - Ring buffers: added `__COMPILER_BARRIER()` (CMSIS, `cmsis_gcc.h`) between the data access
   and the index update on the main-context side: `uart_write_byte()` (write `tx_buf`, then

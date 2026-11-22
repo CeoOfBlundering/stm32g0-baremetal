@@ -40,13 +40,17 @@ The owner must be able to explain every line in an interview. Follow these rules
 ## Coding standard
 - C11. Fixed-width types (`uint32_t` etc.). No dynamic allocation (`malloc`) in firmware.
 - Aim for MISRA C:2012 style: no implicit conversions between signed/unsigned, every
-  `switch` has `default`, no recursion, one exit point is preferred but not mandatory.
+  `switch` has `default`, no recursion.
 - `volatile` for anything shared with an ISR. Keep ISRs short; set flags or push to a
   ring buffer, do the work in the main loop.
 - Register writes: read-modify-write with named CMSIS masks
   (`USART_CR1_UE`), never magic numbers. If a number is unavoidable, it is a named
   `#define` with its derivation.
 - Naming: `module_verb_noun()` (e.g. `uart_write_byte`), `snake_case`, macros `UPPER_CASE`.
+- No `typedef` for structs and enums: write `struct line_editor`, `enum le_state`. Typedefs
+  only for function pointers (e.g. `le_out_fn`), whose raw syntax is hard to read.
+- One exit point per function (MISRA Rule 15.5): use a result variable instead of early
+  `return`. Every `if ... else if` chain ends with an `else` (Rule 15.7).
 - Every driver: `drivers/<name>.h` (public API) + `drivers/<name>.c`. Static for anything private.
 
 ## Comments

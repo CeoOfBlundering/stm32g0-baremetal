@@ -2,7 +2,7 @@
 #include "uart.h"
 #include "cli.h"
 
-static le_t le;
+static struct line_editor le;
 static void echo_uart(char c) {uart_write_byte((uint8_t)c);}
 
 int main(void)
