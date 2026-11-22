@@ -17,19 +17,19 @@
 #define CSI_FINAL_MIN   0x40   // '@'
 #define CSI_FINAL_MAX   0x7E   // '~'
 
-void le_init(struct line_editor *le, le_out_fn out)
+static void echo_str(const struct line_editor *le, const char *s)
 {
-    le->len = 0U;
-    le->skip_next_lf = false;
-    le->state = LE_ST_NORMAL;
-    le->out = out;
-    le->line[0] = '\0';
+    while (*s != '\0') {
+        le->out(*s);
+        s++;
+    }
 }
 
-bool le_feed(struct line_editor *le, char c)
+// Escape-sequence parser. Returns true if c belongs to a sequence and was swallowed.
+// A byte that breaks a sequence resets the state and is left for normal handling.
+static bool esc_consume(struct line_editor *le, char c)
 {
-    bool ready = false;     // true when a finished line is in le->line
-    bool consumed = false;  // true when the escape-sequence parser swallowed c
+    bool consumed = false;
 
     if (le->state == LE_ST_ESC) {
         if (c == CSI_START) {
@@ -37,7 +37,7 @@ bool le_feed(struct line_editor *le, char c)
             consumed = true;
         }
         else {
-            le->state = LE_ST_NORMAL;   // not a CSI: handle c as normal input
+            le->state = LE_ST_NORMAL;
         }
     }
     else if (le->state == LE_ST_CSI) {
@@ -49,56 +49,97 @@ bool le_feed(struct line_editor *le, char c)
             consumed = true;
         }
         else {
-            le->state = LE_ST_NORMAL;   // malformed sequence: handle c as normal input
+            le->state = LE_ST_NORMAL;
         }
     }
     else {
-        // LE_ST_NORMAL: nothing to do before the chain below
+        // LE_ST_NORMAL: not inside a sequence
     }
 
-    if (!consumed) {
-        if (c == CH_ESC) {
-            le->state = LE_ST_ESC;
-        }
-        else if (c == CH_ETX) {
-            le->out('^');
-            le->out('C');
-            le->out('\r');
-            le->out('\n');
-            le->line[0] = '\0';
-            le->len = 0U;
-            ready = true;
-        }
-        else if ((c == '\r') || (c == '\n')) {
-            if ((c == '\n') && le->skip_next_lf) {
-                // '\n' of a "\r\n" pair: line already ended on '\r'
-            }
-            else {
-                le->out('\r');
-                le->out('\n');
-                le->line[le->len] = '\0';
-                le->len = 0U;
-                ready = true;
-            }
-        }
-        else if ((c >= CH_PRINT_MIN) && (c <= CH_PRINT_MAX)) {
-            if (le->len < LE_LINE_MAX) {
-                le->line[le->len] = c;
-                le->len++;
-                le->out(c);
-            }
-            else {
-                le->out(CH_BEL);   // line is full
-            }
-        }
-        else if (((c == CH_BS) || (c == CH_DEL)) && (le->len > 0U)) {
-            le->len--;
-            le->out('\b');
-            le->out(' ');
-            le->out('\b');
+    return consumed;
+}
+
+// Returns true if a line was finished ('\n' right after '\r' is the rest of a CRLF).
+static bool handle_enter(struct line_editor *le, char c)
+{
+    bool ready = false;
+
+    if ((c == '\n') && le->skip_next_lf) {
+        // '\n' of a "\r\n" pair: line already ended on '\r'
+    }
+    else {
+        echo_str(le, "\r\n");
+        le->line[le->len] = '\0';
+        le->len = 0U;
+        ready = true;
+    }
+
+    return ready;
+}
+
+static void handle_cancel(struct line_editor *le)
+{
+    echo_str(le, "^C\r\n");
+    le->line[0] = '\0';
+    le->len = 0U;
+}
+
+static void handle_backspace(struct line_editor *le)
+{
+    if (le->len > 0U) {
+        le->len--;
+        echo_str(le, "\b \b");
+    }
+}
+
+static void insert_char(struct line_editor *le, char c)
+{
+    if ((c >= CH_PRINT_MIN) && (c <= CH_PRINT_MAX)) {
+        if (le->len < LE_LINE_MAX) {
+            le->line[le->len] = c;
+            le->len++;
+            le->out(c);
         }
         else {
-            // ignore other control chars
+            le->out(CH_BEL);   // line is full
+        }
+    }
+    // other control chars are ignored
+}
+
+void le_init(struct line_editor *le, le_out_fn out)
+{
+    le->len = 0U;
+    le->skip_next_lf = false;
+    le->state = LE_ST_NORMAL;
+    le->out = out;
+    le->line[0] = '\0';
+}
+
+bool le_feed(struct line_editor *le, char c)
+{
+    bool ready = false;   // true when a finished line is in le->line
+
+    if (!esc_consume(le, c)) {
+        switch (c) {
+        case CH_ESC:
+            le->state = LE_ST_ESC;
+            break;
+        case CH_ETX:
+            handle_cancel(le);
+            ready = true;   // empty line: main prints a new prompt
+            break;
+        case '\r':
+        case '\n':
+            ready = handle_enter(le, c);
+            break;
+        case CH_BS:
+        case CH_DEL:
+            handle_backspace(le);
+            break;
+        default:
+            insert_char(le, c);
+            break;
         }
     }
 
