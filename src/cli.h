@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define LE_LINE_MAX 80U   // max characters per line; extra input is ignored
 
@@ -46,6 +47,7 @@ struct cli_command {
 
 void cli_init(le_out_fn out);     // where cli_print output goes
 void cli_print(const char *s);
+void cli_print_u32(uint32_t value);   // decimal digits only, no newline
 
 // Finds argv[0] in table[0..n-1] and calls its fn. Prints an error for an unknown
 // command or a truncated line; prints nothing for an empty line (argc == 0).

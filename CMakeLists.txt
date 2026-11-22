@@ -21,6 +21,8 @@ add_executable(firmware
     drivers/uart.c
         src/cli.c
         src/cli.h
+        src/commands.c
+        src/commands.h
 )
 
 target_include_directories(firmware PRIVATE

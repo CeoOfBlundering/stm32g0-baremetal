@@ -5,6 +5,20 @@ Newest at the top. Keep each entry under ~10 lines.
 
 ---
 
+## D-005 — CLI split into editor, tokenizer and command table; output through a callback
+- **Date:** 2026-11-22
+- **Context:** The CLI will grow a command per driver (I2C, SPI, CAN) and must be testable
+  without the board.
+- **Decision:** Three layers in `src/cli.c`: a line editor fed one byte at a time, an
+  in-place tokenizer and a dispatcher over a `const {name, fn, help}` table kept in
+  `src/commands.c`. Neither layer touches the UART: echo and command output go through a
+  `void (*)(char)` callback, so `tests/test_cli.c` runs on the PC with a capturing fake.
+  Two-word commands are subcommands of one table entry (`uart stats`), like `git commit`.
+- **Options considered:** `if`/`strcmp` chain (grows with every command), `strtok` (hidden
+  global state, not reentrant), `printf` (several KB of flash, unclear stack use).
+- **Consequences:** a new command is one function and one table row. The tokenizer reports
+  overflow instead of printing, so a future `echo` can accept the rest of the line.
+
 ## D-004 — USART2 TX is interrupt-driven; writers block only when the buffer is full
 - **Date:** 2026-11-14
 - **Context:** Polling TX blocks `main` ~87 µs per byte (~9 ms for a 100-character CLI help

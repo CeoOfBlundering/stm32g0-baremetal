@@ -12,4 +12,5 @@ void uart_init(void);
 void uart_write_byte(uint8_t byte);
 void uart_write_string(const char *str);
 bool uart_read_byte(uint8_t *out);
+uint32_t uart_get_rx_dropped(void);
 #endif //STM32_BAREMETAL_UART_H

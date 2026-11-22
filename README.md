@@ -15,7 +15,7 @@ network, a triple-modular-redundancy (TMR) fault-voting demo and a black-box dat
 |---|---|---|---|
 | USART2 TX | Interrupt + 64-byte ring buffer | Done | Logic analyzer (polling version), 92-char string through a 63-byte buffer |
 | USART2 RX | Interrupt + 64-byte ring buffer | Done | Echo test with a busy `main` loop, overrun recovery |
-| CLI line editor | On top of USART2 | Next | |
+| CLI | Line editor, tokenizer, command table | Done | 37 host-side unit tests; on the board via the ST-LINK virtual COM port |
 | I2C (MPU6050 IMU) | | Planned | |
 | SPI (microSD, MCP2515) | | Planned | |
 | CAN via MCP2515 | | Planned | Two-node bus |
@@ -29,6 +29,31 @@ lock-free single-producer/single-consumer ring buffer (64 bytes, ISR owns `head`
 the buffer is full. `uart_read_byte()` is non-blocking, so `main` can keep working while input
 arrives. Verified by echoing text typed while `main` sat in a ~1 s busy loop: everything
 arrived complete once the loop ended.
+
+### Command-line interface
+
+Over the USART2 driver (115200 8N1, ST-LINK virtual COM port):
+
+```
+> help
+help  list commands
+version  firmware version
+uart  uart stats: RX drop counter
+> uart stats
+rx_dropped: 0
+> foo
+unknown command: foo
+```
+
+The line editor handles Backspace, Enter as CR, LF or CRLF, arrow keys and other ANSI
+escape sequences (swallowed by a small state machine), Ctrl+C and an 80-character limit
+(BEL when full). The tokenizer splits the line in place and the dispatcher looks the
+first word up in a `const` command table. No part of the CLI calls the UART directly:
+output goes through a callback, so the whole thing is unit-tested on the PC:
+
+```sh
+gcc -std=c11 -Wall -Wextra -Werror -Wshadow -Wconversion -Isrc src/cli.c tests/test_cli.c -o test_cli && ./test_cli
+```
 
 ### USART2 TX
 
@@ -66,7 +91,8 @@ ST-LINK, e.g. with the ST-LINK GDB server from STM32CubeCLT or STM32CubeProgramm
 ## Repository layout
 
 ```
-src/            application entry point (main.c)
+src/            main.c, CLI (cli.c) and the command table (commands.c)
+tests/          host-side unit tests for the CLI (gcc on the PC)
 drivers/        peripheral drivers, one .h/.c pair per peripheral
 startup/        vector table and reset handler (CMSIS template)
 linker/         linker script for 128 KB flash / 36 KB RAM

@@ -19,7 +19,33 @@ Short entries, newest at the top. What was done, what broke, what is next.
 - `tests/test_cli.c`: 20 host-side tests (Enter CR/LF/CRLF, Backspace, escape sequences,
   Ctrl+C, BEL at the 80-char limit), written test-first for Ctrl+C and BEL. A fake `out`
   callback counts BELs. Built with gcc and the project warning flags; all pass.
-- Next: board test (arrow keys, Delete, Ctrl+C, BEL), then the tokenizer.
+- Board test: arrow keys, Delete, Ctrl+C and BEL behave as on the PC.
+- Refactor: `le_feed` is now a dispatcher: `esc_consume()` for escape sequences, then a
+  `switch` on the byte calling one static handler per action. No behaviour change.
+- Tokenizer `cli_tokenize()`: splits in place (separators become `'\0'`, `argv[]` points
+  into the line), one pass with an "at word start" flag. With more than `max_args` tokens
+  the last entry keeps the rest of the line as typed and `*truncated` is set; the caller
+  decides what to do. Bugs on the way: loop bound was `LE_LINE_MAX` instead of `'\0'`
+  (empty tokens from the terminator), `truncated` set as soon as the slots were full
+  (wrong for exactly `max_args` words), and the space branch doing two jobs (`'\0'` and
+  the word-start flag), so guarding it whole lost the overflow detection.
+- Command table: `struct cli_command {name, fn, help}`, a `const` table in flash
+  (`src/commands.c`). `cli_dispatch()` does a linear search on `argv[0]`; unknown name ->
+  `unknown command: x`, truncated line -> `too many arguments` (command not run), empty
+  line -> nothing. Two-word commands are subcommands (`uart stats`: `argv[1]`).
+- `cli_print()` / `cli_print_u32()`: output through the same callback as the editor, so
+  everything is host-testable. `cli_print_u32` fills a buffer from the end with a
+  `do-while` (a plain `while` prints nothing for 0). No `printf`.
+- `uart_get_rx_dropped()`: first addition to the UART API. Safe without a critical
+  section: aligned 32-bit read is one LDR, only the ISR writes the counter.
+- Commands: `help`, `version`, `uart stats`. Caught in review: `cmd_uart` called
+  `strcmp(argv[1], ...)` before checking `argc`, so plain `uart` passed NULL. On this
+  chip that does not fault (address 0 maps to flash), it silently compares garbage.
+- Verified: 37 host tests pass (signed and unsigned `char`); on the board `help`,
+  `version`, `uart stats`, `uart`, unknown command, empty line, 9 words and arrow keys.
+- Pitfall: one "ALL PASS" run was a stale binary; always build and run in one command
+  (`gcc ... && ./test_cli`) and check the test count.
+- Next: I2C driver and MPU6050 (`i2c scan`, `imu read`).
 
 ---
 

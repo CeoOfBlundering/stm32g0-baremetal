@@ -71,6 +71,10 @@ bool uart_read_byte(uint8_t *out) {
     return true;
 }
 
+uint32_t uart_get_rx_dropped(void) {
+    return rx_dropped;
+}
+
 void USART2_IRQHandler(void) {
     if ((USART2->ISR & USART_ISR_ORE) != 0U) {
         USART2->ICR = USART_ICR_ORECF;

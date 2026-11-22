@@ -17,6 +17,7 @@
 #define CSI_PARAM_MAX   0x3F   // '?'
 #define CSI_FINAL_MIN   0x40   // '@'
 #define CSI_FINAL_MAX   0x7E   // '~'
+#define U32_MAX_DIGITS  10U    //  "4294967295"
 
 static void echo_str(const struct line_editor *le, const char *s) {
     while (*s != '\0') {
@@ -190,6 +191,21 @@ void cli_print(const char *s) {
     }
 }
 
+void cli_print_u32(uint32_t value) {
+    char buf[U32_MAX_DIGITS + 1U];
+    buf[U32_MAX_DIGITS] = '\0';
+    size_t i = U32_MAX_DIGITS;
+    size_t digit;
+    do {   // runs at least once, so 0 prints "0"
+        i--;
+        digit = value % 10U;
+        buf[i] = (char)('0' + digit);
+        value = value / 10U;
+    } while (value != 0U);
+
+    cli_print(&buf[i]);
+}
+
 // Returns the matching entry, or NULL if name is not in the table.
 static const struct cli_command *find_command(const struct cli_command *table, size_t n, const char *name) {
     const struct cli_command *result = NULL;
@@ -220,4 +236,4 @@ void cli_dispatch(const struct cli_command *table, size_t n,
             }
         }
     }
-}
+}
