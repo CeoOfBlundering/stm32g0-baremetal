@@ -17,7 +17,7 @@ static void cmd_uart(size_t argc, char *argv[]);
 const struct cli_command cli_commands[] = {
     { "help",    cmd_help,    "list commands" },
     { "version", cmd_version, "firmware version" },
-    { "uart",    cmd_uart,    "uart stats: RX drop counter" },
+    { "uart",    cmd_uart,    "uart stats: RX drop and overrun counters" },
 };
 
 const size_t cli_commands_count = sizeof(cli_commands) / sizeof(cli_commands[0]);
@@ -43,6 +43,8 @@ static void cmd_uart(size_t argc, char *argv[]) {
     if ((argc == 2U) && (strcmp(argv[1], "stats") == 0)) {
         cli_print("rx_dropped: ");
         cli_print_u32(uart_get_rx_dropped());
+        cli_print("\r\nrx_overruns: ");
+        cli_print_u32(uart_get_rx_overruns());
         cli_print("\r\n");
     }
     else {

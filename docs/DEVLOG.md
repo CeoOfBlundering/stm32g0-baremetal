@@ -4,6 +4,36 @@ Short entries, newest at the top. What was done, what broke, what is next.
 
 ---
 
+## 2026-11-23
+- Full review with all three agents (misra / register / errata) over uart + CLI. No code
+  changed; suggestions left for the owner.
+- register-checker: all accesses pass (BRR=139, PA2/PA3 AF1, combined CR1 write legal,
+  TXEIE set/clear scheme correct, RM0444 §5.2.17 clock-enable delay satisfied implicitly).
+- errata-checker: nothing triggered on rev Y. Environmental notes: 2.12.2 (RX line noise,
+  matters for the future GPS wiring) and 2.2.11 (brownout POR can drive PA2 as LSCO).
+- misra-reviewer flagged missing ISR-side compiler barriers: rejected. `main` cannot
+  preempt the ISR, so intra-ISR ordering is unobservable (see 2026-11-19 entry).
+- Applied: single-exit `uart_read_byte`; `GPIO_MODE_AF 2U` (`0b10U` is a GCC extension,
+  not C11); `GPIO_AF1_USART2` instead of a bare `1U` in AFRL; ISR reads `USART2->ISR` once
+  (CR1 TXEIE is still read from the register, since main changes it); comment in the ISR
+  on why its buffer writes need no barrier, so the finding is not raised again.
+- New `rx_overruns` counter (+ `uart_get_rx_overruns()`), kept separate from
+  `rx_dropped`. The review suggested adding ORE to `rx_dropped` as "one lost byte each",
+  but RM0444 §33.5.6 says data received during an overrun is lost, so one ORE is at least
+  one byte. The two counters also point at different problems: `rx_dropped` = main loop
+  too slow to drain the ring, `rx_overruns` = ISR ran too late (interrupt latency, e.g.
+  long critical sections or a debugger halt). `uart stats` prints both.
+- Not applied (decided): skipping the PRIMASK toggle when TXEIE is already set (no
+  measurable gain); RCC clock-enable read-back (current init order already satisfies
+  RM0444 §5.2.17; revisit if `uart_init` is reordered).
+- Verified: 37 host tests pass (signed and unsigned `char`). On the board: halted at a
+  breakpoint, typed several characters, resumed -> `rx_overruns: 1`, `rx_dropped: 0`.
+  Several bytes were lost but only one ORE was counted: the flag stays set for the whole
+  halt, which confirms "one ORE = at least one lost byte", not exactly one.
+- Next: I2C driver and MPU6050.
+
+---
+
 ## 2026-11-22
 - Line editor finished (written and unit-tested on the PC on 11-21, ported today):
   - ANSI escape sequences: a 3-state parser (`LE_ST_NORMAL`, `LE_ST_ESC`, `LE_ST_CSI`)

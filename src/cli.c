@@ -97,7 +97,7 @@ static void insert_char(struct line_editor *le, char c) {
             le->out(c);
         }
         else {
-            le->out(CH_BEL);   // line is full
+            le->out((char)CH_BEL);   // line is full
         }
     }
     // other control chars are ignored
