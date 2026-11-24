@@ -23,6 +23,8 @@ add_executable(firmware
         src/cli.h
         src/commands.c
         src/commands.h
+        drivers/i2c.c
+        drivers/i2c.h
 )
 
 target_include_directories(firmware PRIVATE

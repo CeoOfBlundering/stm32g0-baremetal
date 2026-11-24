@@ -2,13 +2,16 @@
 #include "uart.h"
 #include "cli.h"
 #include "commands.h"
+#include "i2c.h"
 
 static struct line_editor le;
 static void echo_uart(char c) {uart_write_byte((uint8_t)c);}
 
 int main(void) {
     uart_init();
+    i2c_init();
     cli_init(echo_uart);
+
     le_init(&le, echo_uart);
     uart_write_string("> ");
     for (;;) {

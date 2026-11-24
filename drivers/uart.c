@@ -27,7 +27,8 @@ static volatile uint8_t tx_tail;
 
 void uart_init(void) {
     RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
-
+    volatile uint32_t dummy = RCC->IOPENR; // Force the CPU to wait until register is open
+    (void)dummy; // Avoid unused variable compiler warning.
     RCC->APBENR1 |= RCC_APBENR1_USART2EN;
 
     GPIOA->MODER &= ~GPIO_MODER_MODE2_Msk;
@@ -115,4 +116,4 @@ void USART2_IRQHandler(void) {
             USART2->CR1 &= ~USART_CR1_TXEIE_TXFNFIE;
         }
     }
-}
+}
