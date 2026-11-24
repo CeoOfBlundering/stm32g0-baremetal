@@ -178,6 +178,18 @@ static void check_u32(const char *name, uint32_t value, const char *want) {
     if (!ok) { failures++; }
 }
 
+static void check_hex8(const char *name, uint8_t value, const char *want) {
+    cli_init(out_capture);
+    out_len = 0U;
+    out_buf[0] = '\0';
+
+    cli_print_hex8(value);
+
+    bool ok = (strcmp(out_buf, want) == 0);
+    printf("%-28s %s  (out=\"%s\")\n", name, ok ? "PASS" : "FAIL", out_buf);
+    if (!ok) { failures++; }
+}
+
 int main(void) {
     // Basic input, Enter, Backspace
     check("plain CR",             "help\r",            1, "help");
@@ -230,6 +242,13 @@ int main(void) {
     check_u32("u32: two digits", 42U,         "42");
     check_u32("u32: inner zeros", 1000U,      "1000");
     check_u32("u32: UINT32_MAX", UINT32_MAX,  "4294967295");
+
+    // Hex printing (FAIL until cli_print_hex8 is implemented)
+    check_hex8("hex8: zero",          0x00U, "0x00");
+    check_hex8("hex8: leading zero",  0x08U, "0x08");
+    check_hex8("hex8: letter nibble", 0x0AU, "0x0A");
+    check_hex8("hex8: MPU6050 addr",  0x68U, "0x68");
+    check_hex8("hex8: both letters",  0xFFU, "0xFF");
 
     printf("\n%s (%d failing)\n", failures == 0 ? "ALL PASS" : "SOME FAIL", failures);
     return (failures == 0) ? 0 : 1;

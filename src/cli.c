@@ -206,6 +206,19 @@ void cli_print_u32(uint32_t value) {
     cli_print(&buf[i]);
 }
 
+void cli_print_hex8(uint8_t value) {
+    char buf[5]; // 4 bytes for 0xAB Hex, 1 byte for '\0'
+    static const char hex[] = "0123456789ABCDEF";
+    uint8_t upper_nibble = (uint8_t)(value >> 4U);
+    uint8_t lower_nibble = (uint8_t)(value & 0x0FU);
+    buf[0] = '0';
+    buf[1] = 'x';
+    buf[2] = hex[upper_nibble];
+    buf[3] = hex[lower_nibble];
+    buf[4] = '\0';
+    cli_print(buf);
+}
+
 // Returns the matching entry, or NULL if name is not in the table.
 static const struct cli_command *find_command(const struct cli_command *table, size_t n, const char *name) {
     const struct cli_command *result = NULL;
